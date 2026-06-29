@@ -71,7 +71,7 @@ jobs:
 
       - name: Trivy image scan (fail high/critical)
         if: steps.dockerfile_check.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.24.0
         with:
           image-ref: local/security-scan:latest
           format: table
