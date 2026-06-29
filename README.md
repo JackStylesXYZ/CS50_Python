@@ -87,6 +87,18 @@ Rules:
 - Add complexity only when there is a clear reason.
 - Build in small, testable milestones.
 
+## Engineering Standards
+
+Security and quality standards for this repository are documented in:
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [docs/security/threat-model.md](docs/security/threat-model.md)
+- [docs/security/secure-coding.md](docs/security/secure-coding.md)
+- [docs/security/sql-postgres-guidance.md](docs/security/sql-postgres-guidance.md)
+- [docs/security/data-protection.md](docs/security/data-protection.md)
+- [docs/security/incident-response.md](docs/security/incident-response.md)
+- [docs/security/logging-alerting.md](docs/security/logging-alerting.md)
+
 ## Success Criteria
 
 This project is successful when:

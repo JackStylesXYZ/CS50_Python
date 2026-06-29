@@ -1,0 +1,93 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit bandit
+
+      - name: Dependency audit (requirements)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(requirements*.txt)
+          if [ ${#files[@]} -gt 0 ]; then
+            for file in "${files[@]}"; do
+              echo "Auditing dependencies in $file"
+              pip-audit -r "$file"
+            done
+          else
+            echo "No requirements file found; skipping pip-audit."
+          fi
+
+      - name: Static analysis (Bandit)
+        run: bandit -r . -x .venv,venv,env,.git,.cursor
+
+      - name: Secret scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for Dockerfile
+        id: dockerfile_check
+        shell: bash
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dockerfile lint
+        if: steps.dockerfile_check.outputs.exists == 'true'
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Build image for scan
+        if: steps.dockerfile_check.outputs.exists == 'true'
+        run: docker build -t local/security-scan:latest .
+
+      - name: Trivy image scan (fail high/critical)
+        if: steps.dockerfile_check.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: local/security-scan:latest
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
